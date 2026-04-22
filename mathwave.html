@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MathWave — Música con Funciones</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #2a2a3e;
+    --text: #e8e8f0;
+    --muted: #8888aa;
+    --accent: #7fff6e;
+    --accent2: #ff6e9c;
+    --accent3: #6eb8ff;
+    --accent4: #ffcd6e;
+    --accent5: #c46eff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+
+  .logo {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .logo span { color: var(--accent); }
+
+  .transport {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 7px 14px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+  }
+  .btn:hover { border-color: var(--muted); background: var(--border); }
+  .btn.primary {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    font-weight: 700;
+  }
+  .btn.primary:hover { opacity: 0.85; }
+  .btn.danger { border-color: var(--accent2); color: var(--accent2); }
+  .btn.danger:hover { background: rgba(255,110,156,0.1); }
+  .btn.active-play {
+    background: var(--accent2);
+    color: #000;
+    border-color: var(--accent2);
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.7} }
+
+  .duration-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .duration-control input {
+    width: 50px;
+    background: var(--border);
+    border: 1px solid var(--muted);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 5px 8px;
+    border-radius: 4px;
+    text-align: center;
+  }
+
+  /* MAIN LAYOUT */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* SIDEBAR — layers */
+  .sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    padding: 12px 16px;
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 2px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+  }
+
+  .layers {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .layers::-webkit-scrollbar { width: 4px; }
+  .layers::-webkit-scrollbar-track { background: transparent; }
+  .layers::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .layer {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    transition: border-color 0.15s;
+    overflow: hidden;
+  }
+  .layer:hover { border-color: #3a3a5a; }
+
+  /* top row: color dot + label + DELETE outside everything */
+  .layer-header {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 8px 0 10px;
+  }
+  .layer-color-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .layer-label {
+    flex: 1;
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    opacity: 0.6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .layer-remove {
+    width: 28px; height: 28px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #555570;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    margin-left: auto;
+  }
+  .layer-remove:hover {
+    color: var(--accent2);
+    border-color: rgba(255,110,156,0.4);
+    background: rgba(255,110,156,0.1);
+  }
+
+  /* input on its own full row */
+  .layer-fn-row {
+    padding: 5px 10px 0 10px;
+  }
+  .layer-input {
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 7px 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    outline: none;
+    cursor: text;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .layer-input:hover { border-color: #3a3a5a; background: rgba(255,255,255,0.07); }
+  .layer-input:focus { border-color: currentColor; background: rgba(255,255,255,0.06); }
+  .layer-input::placeholder { color: var(--muted); }
+
+  /* controls row */
+  .layer-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px 8px 10px;
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+  }
+  .layer-controls input[type=range] {
+    -webkit-appearance: none;
+    flex: 1; height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  .layer-controls input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+
+  .add-layer-section {
+    padding: 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .preset-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 4px 8px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .preset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* GESTURE HINT */
+  .gesture-hint {
+    position: absolute;
+    bottom: 36px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 16px;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .gesture-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(10,10,20,0.82);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: rgba(255,255,255,0.55);
+    backdrop-filter: blur(6px);
+    white-space: nowrap;
+    opacity: 1;
+    transition: opacity 0.6s;
+  }
+  .gesture-pill .icon { font-size: 14px; opacity: 0.8; }
+  .gesture-hint.fade-out .gesture-pill { opacity: 0; }
+
+  /* ── LIBRARY PANEL — permanent right panel ── */
+  .library-panel {
+    width: 300px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  .library-panel.collapsed { width: 38px; }
+  .library-panel.collapsed .library-body { display: none; }
+  .library-panel.collapsed .library-title { display: none; }
+  .library-panel.collapsed #libArrow { transform: rotate(180deg); }
+
+  .library-header {
+    padding: 12px 12px 12px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    user-select: none;
+  }
+  .library-header:hover { background: rgba(255,255,255,0.02); }
+
+  .library-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+  }
+  .library-title {
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .library-categories {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .lib-cat-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .lib-cat-btn:hover { border-color: var(--muted); color: var(--text); }
+  .lib-cat-btn.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
+
+  .library-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    align-content: start;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .library-grid::-webkit-scrollbar { width: 4px; }
+  .library-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .lib-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.12s, box-shadow 0.15s;
+    position: relative;
+  }
+  .lib-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(127,255,110,0.12); }
+  .lib-card:hover .lib-card-add { opacity: 1; }
+  .lib-card canvas { display: block; width: 100%; height: 56px; }
+  .lib-card-info { padding: 5px 7px 6px; border-top: 1px solid var(--border); }
+  .lib-card-name { font-size: 11px; font-weight: 700; color: var(--text); margin-bottom: 1px; }
+  .lib-card-fn {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .lib-card-add {
+    position: absolute; top: 4px; right: 4px;
+    width: 20px; height: 20px;
+    background: var(--accent); color: #000;
+    border-radius: 50%; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity 0.15s; font-weight: 700; line-height: 1;
+  }
+
+  .canvas-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  #mainCanvas {
+    flex: 1;
+    display: block;
+    cursor: crosshair;
+  }
+
+  /* PLAYHEAD overlay */
+  #playheadLine {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: rgba(255,255,255,0.7);
+    pointer-events: none;
+    display: none;
+    box-shadow: 0 0 8px rgba(255,255,255,0.4);
+    left: 0;
+  }
+
+  /* AXIS LABELS */
+  .axis-label-x {
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .axis-label-y {
+    position: absolute;
+    top: 8px;
+    left: 12px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  /* NOTE DISPLAY */
+  .note-display {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(10,10,15,0.8);
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    pointer-events: none;
+  }
+
+  /* STATUS BAR */
+  .statusbar {
+    display: flex;
+    align-items: center;
+    padding: 6px 16px;
+    border-top: 1px solid var(--border);
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    gap: 20px;
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+  .statusbar .sep { color: var(--border); }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.show { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    max-width: 420px;
+    width: 90%;
+    transform: translateY(10px);
+    transition: transform 0.2s;
+  }
+  .modal-overlay.show .modal { transform: translateY(0); }
+  .modal h2 { font-size: 18px; margin-bottom: 8px; }
+  .modal p { font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
+  .share-url {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 12px;
+    width: 100%;
+    color: var(--accent);
+    word-break: break-all;
+    margin-bottom: 12px;
+  }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: #000;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    padding: 10px 20px;
+    border-radius: 6px;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 200;
+    pointer-events: none;
+    font-weight: 700;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- ONBOARDING MODAL -->
+<div class="modal-overlay" id="onboardingModal" style="display:flex">
+  <div class="modal" style="max-width:480px">
+    <div style="font-size:28px;margin-bottom:12px">〜 MathWave</div>
+    <p style="font-size:14px;color:var(--text);margin-bottom:6px;line-height:1.6">Turn math functions into music. Each function <strong>f(x)</strong> maps time to frequency — the curve you draw <em>is</em> the melody.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0;font-size:12px">
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px">
+        <div style="color:var(--accent);font-family:'Space Mono',monospace;margin-bottom:4px">sin(x)*440+440</div>
+        <div style="color:var(--muted)">Oscillating melody around A4</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px">
+        <div style="color:var(--accent3);font-family:'Space Mono',monospace;margin-bottom:4px">x*80+220</div>
+        <div style="color:var(--muted)">Rising glissando over time</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px">
+        <div style="color:var(--accent4);font-family:'Space Mono',monospace;margin-bottom:4px">pow(x,2)*20+100</div>
+        <div style="color:var(--muted)">Accelerating parabolic climb</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px">
+        <div style="color:var(--accent2);font-family:'Space Mono',monospace;margin-bottom:4px">floor(x)*80+220</div>
+        <div style="color:var(--muted)">Stepped staircase of notes</div>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:18px">Stack multiple layers, browse the <strong style="color:var(--text)">Math Library</strong> on the right, scroll to zoom the x-axis, drag to pan.</p>
+    <div class="modal-btns" style="justify-content:center">
+      <button class="btn primary" id="btnOnboardingClose" style="padding:10px 32px;font-size:13px">Start playing →</button>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="logo">〜 Math<span>Wave</span></div>
+  <div class="transport">
+    <div class="duration-control">
+      <span>dur:</span>
+      <input type="number" id="durationInput" value="4" min="1" max="60">
+      <span>s</span>
+    </div>
+    <div class="duration-control" style="margin-left:6px">
+      <span>x ±</span>
+      <select id="xRangeSelect" style="background:var(--border);border:1px solid var(--muted);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;padding:5px 6px;border-radius:4px;cursor:pointer">
+        <option value="4">4</option>
+        <option value="8">8</option>
+        <option value="16" selected>16</option>
+        <option value="32">32</option>
+        <option value="64">64</option>
+        <option value="128">128</option>
+        <option value="256">256</option>
+      </select>
+    </div>
+    <div class="duration-control" style="margin-left:2px">
+      <span>pan:</span>
+      <input type="number" id="panInput" value="0" step="1" style="width:58px">
+    </div>
+    <button class="btn" id="btnResetView" title="Reset view">⌖</button>
+    <button class="btn" id="btnStop">◼ Stop</button>
+    <button class="btn primary" id="btnPlay">▶ Play</button>
+    <button class="btn" id="btnExport">↓ WAV</button>
+    <button class="btn" id="btnShare">⎋ Share</button>
+  </div>
+</header>
+
+<div class="main">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header" style="display:flex;justify-content:space-between;align-items:center">
+      <span>Layers</span>
+      <span style="font-size:9px;color:var(--muted);letter-spacing:0.5px;font-weight:normal;text-transform:none">✎ click to edit</span>
+    </div>
+    <div class="layers" id="layersList"></div>
+    <div class="add-layer-section">
+      <div class="presets" id="presets">
+        <button class="preset-btn" data-fn="sin(x)*440+440">wave</button>
+        <button class="preset-btn" data-fn="x*100+220">rise ↑</button>
+        <button class="preset-btn" data-fn="880-x*80">fall ↓</button>
+        <button class="preset-btn" data-fn="Math.abs(sin(x*2))*800+100">pulse</button>
+        <button class="preset-btn" data-fn="(Math.floor(x*4)/4)*220+220">steps</button>
+        <button class="preset-btn" data-fn="Math.pow(x,2)*30+220">parabola</button>
+        <button class="preset-btn" data-fn="sin(x*3)*300+440">vibrato</button>
+        <button class="preset-btn" data-fn="sin(x)*440+sin(x*3)*150+440">harmony</button>
+      </div>
+      <button class="btn primary" id="btnAddLayer" style="width:100%">+ New layer</button>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-area">
+    <canvas id="mainCanvas"></canvas>
+    <div id="playheadLine"></div>
+    <div class="axis-label-x" style="display:none"></div>
+    <div class="axis-label-y" style="display:none"></div>
+    <div class="note-display" id="noteDisplay" style="display:none"></div>
+    <div class="gesture-hint" id="gestureHint">
+      <div class="gesture-pill"><span class="icon">⟺</span> drag to pan</div>
+      <div class="gesture-pill"><span class="icon">⊞</span> scroll / pinch to zoom</div>
+    </div>
+  </div>
+
+  <!-- LIBRARY — collapsible right panel -->
+  <div class="library-panel" id="libraryPanel">
+    <div class="library-header" style="cursor:pointer" id="libraryToggleHeader">
+      <span class="library-title">Math Library</span>
+      <span id="libArrow" style="font-size:10px;color:var(--muted);transition:transform 0.25s;display:inline-block">▶</span>
+    </div>
+    <div class="library-body" id="libraryBody">
+      <div class="library-categories" id="libCats"></div>
+      <div class="library-grid" id="libGrid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="statusbar">
+  <span id="statusLayers">0 layers</span>
+  <span class="sep">|</span>
+  <span id="statusFreqRange">—</span>
+  <span class="sep">|</span>
+  <span id="statusCursor">cursor: —</span>
+  <span class="sep" style="margin-left:auto">|</span>
+  <span style="color: var(--accent)">MathWave v0.1 — f(x) → 🎵</span>
+</div>
+
+<!-- SHARE MODAL -->
+<div class="modal-overlay" id="shareModal">
+  <div class="modal">
+    <h2>Share composition</h2>
+    <p>Copy this link to share your composition. Anyone with the link can play it.</p>
+    <div class="share-url" id="shareUrl"></div>
+    <div class="modal-btns">
+      <button class="btn" id="btnCopyUrl">Copy link</button>
+      <button class="btn danger" id="btnCloseModal">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+const COLORS = ['#7fff6e','#ff6e9c','#6eb8ff','#ffcd6e','#c46eff','#6effdb','#ff9f6e'];
+let layers = [];
+let layerCounter = 0;
+let audioCtx = null;
+let isPlaying = false;
+let playStartTime = 0;
+let animFrame = null;
+let oscillators = [];
+
+const canvas = document.getElementById('mainCanvas');
+const ctx = canvas.getContext('2d');
+const canvasArea = canvas.parentElement;
+
+// ─────────────────────────────────────────────
+// RESIZE
+// ─────────────────────────────────────────────
+function resizeCanvas() {
+  canvas.width = canvasArea.clientWidth;
+  canvas.height = canvasArea.clientHeight;
+  drawAll();
+}
+window.addEventListener('resize', resizeCanvas);
+
+// ─────────────────────────────────────────────
+// LAYER MANAGEMENT
+// ─────────────────────────────────────────────
+function addLayer(fn = 'sin(x)*440') {
+  const id = ++layerCounter;
+  const color = COLORS[(id - 1) % COLORS.length];
+  layers.push({ id, fn, color, volume: 0.5, muted: false, error: false });
+  renderLayers();
+  drawAll();
+}
+
+function removeLayer(id) {
+  layers = layers.filter(l => l.id !== id);
+  renderLayers();
+  drawAll();
+}
+
+function updateLayerFn(id, fn) {
+  const l = layers.find(l => l.id === id);
+  if (l) { l.fn = fn; l.error = false; drawAll(); }
+}
+
+function updateLayerVolume(id, vol) {
+  const l = layers.find(l => l.id === id);
+  if (l) l.volume = parseFloat(vol);
+}
+
+function toggleMute(id) {
+  const l = layers.find(l => l.id === id);
+  if (l) l.muted = !l.muted;
+}
+
+function renderLayers() {
+  const list = document.getElementById('layersList');
+  list.innerHTML = '';
+  if (layers.length === 0) {
+  list.innerHTML = `<div style="text-align:center;color:var(--muted);font-size:12px;padding:20px;font-family:'Space Mono',monospace">No layers yet.<br>Add one below.</div>`;
+    return;
+  }
+  layers.forEach(l => {
+    const div = document.createElement('div');
+    div.className = 'layer';
+    div.style.color = l.color;
+    div.style.borderColor = l.error ? 'var(--accent2)' : '';
+    div.innerHTML = `
+      <div class="layer-header">
+        <div class="layer-color-dot" style="background:${l.color}"></div>
+        <span class="layer-label" style="color:${l.color}">f(x) →</span>
+        <button class="layer-remove" data-id="${l.id}" title="Eliminar capa">✕</button>
+      </div>
+      <div class="layer-fn-row">
+        <input class="layer-input" value="${escHtml(l.fn)}" placeholder="ej: sin(x)*440+440"
+          data-id="${l.id}" spellcheck="false" style="color:${l.color}">
+      </div>
+      <div class="layer-controls">
+        <span>vol</span>
+        <input type="range" min="0" max="1" step="0.01" value="${l.volume}" data-id="${l.id}" class="vol-range">
+        <label style="cursor:pointer;user-select:none;margin-left:2px">
+          <input type="checkbox" ${l.muted?'':'checked'} data-id="${l.id}" class="mute-check" style="display:none">
+          <span style="color:${l.muted?'var(--muted)':l.color}">${l.muted ? 'off' : 'on'}</span>
+        </label>
+        ${l.error ? `<span style="color:var(--accent2);margin-left:auto">⚠ error</span>` : ''}
+      </div>
+    `;
+    list.appendChild(div);
+  });
+
+  // Events
+  list.querySelectorAll('.layer-input').forEach(inp => {
+    inp.addEventListener('input', e => updateLayerFn(+e.target.dataset.id, e.target.value));
+  });
+  list.querySelectorAll('.layer-remove').forEach(btn => {
+    btn.addEventListener('click', e => removeLayer(+e.target.dataset.id));
+  });
+  list.querySelectorAll('.vol-range').forEach(inp => {
+    inp.addEventListener('input', e => updateLayerVolume(+e.target.dataset.id, e.target.value));
+  });
+  list.querySelectorAll('.mute-check').forEach(inp => {
+    inp.addEventListener('change', e => {
+      toggleMute(+e.target.dataset.id);
+      renderLayers();
+    });
+  });
+
+  document.getElementById('statusLayers').textContent = `${layers.length} layer${layers.length !== 1 ? 's' : ''}`;
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ─────────────────────────────────────────────
+// EVALUATE FUNCTION
+// ─────────────────────────────────────────────
+function evalFn(fn, x) {
+  try {
+    // expose Math functions naturally
+    const f = new Function('x','sin','cos','tan','abs','log','sqrt','pow','PI','exp','floor','ceil','round','min','max',
+      `"use strict"; return (${fn});`
+    );
+    const val = f(x,
+      Math.sin, Math.cos, Math.tan, Math.abs, Math.log, Math.sqrt, Math.pow, Math.PI,
+      Math.exp, Math.floor, Math.ceil, Math.round, Math.min, Math.max
+    );
+    return typeof val === 'number' && isFinite(val) ? val : null;
+  } catch { return null; }
+}
+
+// ─────────────────────────────────────────────
+// COORDINATE SYSTEM — 4-quadrant, configurable range + pan
+// ─────────────────────────────────────────────
+// X axis: domain controlled by xRange (half-width) and panX (center offset)
+//         visible range = [panX - xRange, panX + xRange]
+// Y axis: frequency, centered at CENTER_FREQ, ±MAX_OFFSET
+// Audio evaluates f(x) across the full visible X range over `duration` seconds
+
+const MAX_OFFSET = 1500;
+const CENTER_FREQ = 440;
+
+function getXRange() { return parseFloat(document.getElementById('xRangeSelect').value) || 16; }
+function getPan()    { return parseFloat(document.getElementById('panInput').value) || 0; }
+function getDuration() { return parseFloat(document.getElementById('durationInput').value) || 4; }
+
+// visible x bounds
+function xMin() { return getPan() - getXRange(); }
+function xMax() { return getPan() + getXRange(); }
+
+function xToCanvas(xWorld) {
+  const w = canvas.width;
+  return ((xWorld - xMin()) / (xMax() - xMin())) * w;
+}
+function yToCanvas(yWorld) {
+  const h = canvas.height;
+  return h/2 - (yWorld / MAX_OFFSET) * (h/2 - 30);
+}
+function canvasToX(px) {
+  const w = canvas.width;
+  return xMin() + (px / w) * (xMax() - xMin());
+}
+function canvasToY(py) {
+  const h = canvas.height;
+  return -((py - h/2) / (h/2 - 30)) * MAX_OFFSET;
+}
+function yWorldToFreq(y) { return CENTER_FREQ + y; }
+function freqToYWorld(freq) { return freq - CENTER_FREQ; }
+
+// ── Pan via mouse drag on canvas
+let isDragging = false, dragStartX = 0, dragStartPan = 0;
+canvas.addEventListener('mousedown', e => {
+  isDragging = true;
+  dragStartX = e.clientX;
+  dragStartPan = getPan();
+  canvas.style.cursor = 'grabbing';
+});
+window.addEventListener('mouseup', () => { isDragging = false; canvas.style.cursor = 'crosshair'; });
+// (mousemove handled below, drag logic injected there)
+
+// ── Scroll to zoom xRange
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const sel = document.getElementById('xRangeSelect');
+  const opts = Array.from(sel.options);
+  let idx = opts.findIndex(o => o.selected);
+  if (e.deltaY > 0) idx = Math.min(idx + 1, opts.length - 1);
+  else              idx = Math.max(idx - 1, 0);
+  opts[idx].selected = true;
+  stop(); drawAll();
+}, { passive: false });
+
+function drawGrid() {
+  const w = canvas.width, h = canvas.height;
+  const xR = getXRange(), pan = getPan();
+  const xL = xMin(), xR2 = xMax();
+  const ox = xToCanvas(0);
+  const oy = yToCanvas(0);
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(0, 0, w, h);
+
+  const grad = ctx.createRadialGradient(Math.max(0,ox), oy, 0, Math.max(0,ox), oy, Math.max(w,h)*0.6);
+  grad.addColorStop(0, 'rgba(18,18,32,0.9)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  // Positive-x zone tint
+  if (ox < w) {
+    ctx.fillStyle = 'rgba(127,255,110,0.018)';
+    ctx.fillRect(Math.max(0, ox), 0, w - Math.max(0, ox), h);
+  }
+
+  // ── Vertical grid lines
+  // Choose a nice tick spacing based on xRange
+  const rawStep = (xR * 2) / 10;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const niceSteps = [1,2,5,10];
+  const tickStep = niceSteps.map(s => s*mag).find(s => s >= rawStep) || mag;
+
+  const firstTick = Math.ceil(xL / tickStep) * tickStep;
+  ctx.lineWidth = 1;
+  for (let t = firstTick; t <= xR2 + tickStep*0.01; t += tickStep) {
+    const px = xToCanvas(t);
+    const isZero = Math.abs(t) < tickStep * 0.01;
+    ctx.strokeStyle = isZero ? '#4a4a7a' : '#1a1a2e';
+    ctx.setLineDash(isZero ? [] : []);
+    ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, h); ctx.stroke();
+    if (!isZero) {
+      ctx.fillStyle = '#3a3a58';
+      ctx.font = '9px Space Mono, monospace';
+      ctx.textAlign = 'center';
+      const label = Number.isInteger(tickStep) ? t.toFixed(0) : t.toFixed(1);
+      ctx.fillText(label, px, h - 6);
+      // axis tick
+      ctx.strokeStyle = '#4a4a7a';
+      ctx.beginPath(); ctx.moveTo(px, oy - 4); ctx.lineTo(px, oy + 4); ctx.stroke();
+    }
+  }
+
+  // ── Horizontal grid — frequency lines
+  const freqTicks = [
+    { hz: 1760, label: 'A6' }, { hz: 1320, label: 'E6' },
+    { hz: 880,  label: 'A5' }, { hz: 660,  label: 'E5' },
+    { hz: 440,  label: 'A4' }, { hz: 330,  label: 'E4' },
+    { hz: 220,  label: 'A3' }, { hz: 110,  label: 'A2' },
+  ];
+  freqTicks.forEach(({ hz, label }) => {
+    const yw = freqToYWorld(hz);
+    if (Math.abs(yw) > MAX_OFFSET) return;
+    const py = yToCanvas(yw);
+    const isCenter = hz === CENTER_FREQ;
+    ctx.strokeStyle = isCenter ? '#2e2e52' : '#181828';
+    ctx.lineWidth = isCenter ? 1.5 : 1;
+    ctx.setLineDash(isCenter ? [6, 4] : []);
+    ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(w, py); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = isCenter ? '#6060a0' : '#2a2a48';
+    ctx.font = '9px Space Mono, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${label} ${hz}Hz`, 6, py - 3);
+    ctx.textAlign = 'right';
+    ctx.fillText(`${hz}Hz`, w - 6, py - 3);
+  });
+
+  // ── Main axes
+  ctx.textAlign = 'left';
+  ctx.strokeStyle = '#4a4a7a';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([]);
+
+  // X axis (only if in view)
+  ctx.beginPath(); ctx.moveTo(0, oy); ctx.lineTo(w, oy); ctx.stroke();
+  // Y axis (only if in view)
+  if (ox >= 0 && ox <= w) {
+    ctx.beginPath(); ctx.moveTo(ox, 0); ctx.lineTo(ox, h); ctx.stroke();
+  }
+
+  // Arrows
+  ctx.fillStyle = '#4a4a7a';
+  ctx.beginPath(); ctx.moveTo(w-2, oy); ctx.lineTo(w-10, oy-5); ctx.lineTo(w-10, oy+5); ctx.fill();
+  if (ox >= 0 && ox <= w) {
+    ctx.beginPath(); ctx.moveTo(ox, 2); ctx.lineTo(ox-5, 12); ctx.lineTo(ox+5, 12); ctx.fill();
+  }
+
+  // Axis labels
+  ctx.fillStyle = '#5a5a8a';
+  ctx.font = 'bold 10px Space Mono, monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText('x', w - 14, oy - 8);
+  if (ox >= 0 && ox <= w) {
+    ctx.textAlign = 'left';
+    ctx.fillText('y (Hz)', ox + 8, 14);
+    ctx.fillStyle = '#4a4a7a';
+    ctx.font = '10px Space Mono, monospace';
+    ctx.fillText('O', ox + 4, oy + 12);
+  }
+
+  // Quadrant labels
+  ctx.font = '11px Syne, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  const midRight = (w - Math.max(0, ox)) / 2 + Math.max(0, ox);
+  const midLeft  = Math.min(w, ox) / 2;
+  ctx.textAlign = 'center';
+  if (ox > 20)  { ctx.fillText('II', midLeft, h*0.25);  ctx.fillText('III', midLeft, h*0.75); }
+  if (ox < w-20){ ctx.fillText('I',  midRight, h*0.25); ctx.fillText('IV',  midRight, h*0.75); }
+  ctx.textAlign = 'left';
+}
+
+function drawLayer(layer) {
+  const w = canvas.width, h = canvas.height;
+  const xL = xMin(), xR = xMax();
+  const steps = Math.max(w * 2, 3000);
+
+  ctx.save();
+  ctx.globalAlpha = layer.muted ? 0.12 : 0.9;
+  ctx.strokeStyle = layer.color;
+  ctx.lineWidth = 2;
+  ctx.shadowColor = layer.color;
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+
+  let started = false;
+  let hasError = false;
+
+  for (let i = 0; i <= steps; i++) {
+    const xWorld = xL + (i / steps) * (xR - xL);
+    const rawVal = evalFn(layer.fn, xWorld);
+
+    if (rawVal === null) { started = false; hasError = true; continue; }
+
+    const yWorld = freqToYWorld(rawVal);
+    const px = xToCanvas(xWorld);
+    const py = yToCanvas(yWorld);
+
+    if (py < -10 || py > h + 10) { started = false; continue; }
+
+    if (!started) { ctx.moveTo(px, py); started = true; }
+    else ctx.lineTo(px, py);
+  }
+
+  ctx.stroke();
+  ctx.restore();
+  layer.error = hasError;
+}
+
+function drawAll() {
+  drawGrid();
+  layers.forEach(l => drawLayer(l));
+  updateStatusFreq();
+}
+
+function updateStatusFreq() {
+  const active = layers.filter(l => !l.error && !l.muted);
+  if (active.length === 0) {
+    document.getElementById('statusFreqRange').textContent = 'rango: —';
+    return;
+  }
+  document.getElementById('statusFreqRange').textContent = `${active.length} activa${active.length!==1?'s':''}`;
+}
+
+// ─────────────────────────────────────────────
+// AUDIO
+// ─────────────────────────────────────────────
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function getDuration() {
+  return parseFloat(document.getElementById('durationInput').value) || 4;
+}
+
+function play() {
+  if (isPlaying) stop();
+  const ac = getAudioCtx();
+  const duration = getDuration();
+  const sampleRate = ac.sampleRate;
+  const totalSamples = Math.ceil(duration * sampleRate);
+  const steps = 512;
+
+  oscillators = [];
+
+  layers.forEach(layer => {
+    if (layer.muted) return;
+
+    const buffer = ac.createBuffer(1, totalSamples, sampleRate);
+    const data = buffer.getChannelData(0);
+    let phase = 0;
+
+    const xL = xMin(), xSpan = xMax() - xMin();
+    for (let i = 0; i < totalSamples; i++) {
+      const xWorld = xL + (i / totalSamples) * xSpan;
+      const freq = evalFn(layer.fn, xWorld);
+
+      if (freq === null || freq < 20 || freq > 20000) {
+        data[i] = 0;
+        continue;
+      }
+
+      phase += (2 * Math.PI * freq) / sampleRate;
+      data[i] = Math.sin(phase) * layer.volume * 0.4;
+    }
+
+    const source = ac.createBufferSource();
+    source.buffer = buffer;
+
+    const gainNode = ac.createGain();
+    gainNode.gain.setValueAtTime(0, ac.currentTime);
+    gainNode.gain.linearRampToValueAtTime(1, ac.currentTime + 0.01);
+    gainNode.gain.setValueAtTime(1, ac.currentTime + duration - 0.05);
+    gainNode.gain.linearRampToValueAtTime(0, ac.currentTime + duration);
+
+    source.connect(gainNode);
+    gainNode.connect(ac.destination);
+    source.start(ac.currentTime);
+    source.stop(ac.currentTime + duration);
+    oscillators.push(source);
+  });
+
+  isPlaying = true;
+  playStartTime = performance.now();
+  document.getElementById('btnPlay').className = 'btn active-play';
+  document.getElementById('btnPlay').textContent = '▶ PLAYING';
+  document.getElementById('playheadLine').style.display = 'block';
+  animatePlayhead(duration);
+}
+
+function stop() {
+  oscillators.forEach(o => { try { o.stop(); } catch {} });
+  oscillators = [];
+  isPlaying = false;
+  if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+  document.getElementById('btnPlay').className = 'btn primary';
+  document.getElementById('btnPlay').textContent = '▶ PLAY';
+  document.getElementById('playheadLine').style.display = 'none';
+}
+
+function animatePlayhead(duration) {
+  const line = document.getElementById('playheadLine');
+  const w = canvas.width;
+
+  function frame() {
+    const elapsed = (performance.now() - playStartTime) / 1000;
+    if (elapsed >= duration) { stop(); return; }
+    const px = (elapsed / duration) * w;
+    line.style.left = px + 'px';
+    animFrame = requestAnimationFrame(frame);
+  }
+  animFrame = requestAnimationFrame(frame);
+}
+
+// ─────────────────────────────────────────────
+// EXPORT WAV
+// ─────────────────────────────────────────────
+async function exportWav() {
+  if (layers.filter(l => !l.muted).length === 0) { showToast('No active layers'); return; }
+  showToast('Generating WAV...');
+
+  const ac = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
+  const duration = getDuration();
+  const sampleRate = 44100;
+  const totalSamples = Math.ceil(duration * sampleRate);
+
+  const mixed = new Float32Array(totalSamples);
+
+  const xL = xMin(), xSpan = xMax() - xMin();
+  layers.forEach(layer => {
+    if (layer.muted) return;
+    let phase = 0;
+    for (let i = 0; i < totalSamples; i++) {
+      const xWorld = xL + (i / totalSamples) * xSpan;
+      const freq = evalFn(layer.fn, xWorld);
+      if (freq === null || freq < 20 || freq > 20000) continue;
+      phase += (2 * Math.PI * freq) / sampleRate;
+      mixed[i] += Math.sin(phase) * layer.volume * 0.4;
+    }
+  });
+
+  // Normalize
+  let max = 0;
+  for (let i = 0; i < totalSamples; i++) max = Math.max(max, Math.abs(mixed[i]));
+  if (max > 0.95) for (let i = 0; i < totalSamples; i++) mixed[i] /= max / 0.95;
+
+  // WAV encode
+  const wavBuffer = encodeWav(mixed, sampleRate);
+  const blob = new Blob([wavBuffer], { type: 'audio/wav' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'mathwave.wav'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('WAV exported!');
+}
+
+function encodeWav(samples, sampleRate) {
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
+  const writeStr = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+  writeStr(0, 'RIFF');
+  view.setUint32(4, 36 + samples.length * 2, true);
+  writeStr(8, 'WAVE'); writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+  writeStr(36, 'data'); view.setUint32(40, samples.length * 2, true);
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(44 + i * 2, s * 0x7FFF, true);
+  }
+  return buffer;
+}
+
+// ─────────────────────────────────────────────
+// SHARE
+// ─────────────────────────────────────────────
+function getShareUrl() {
+  const data = layers.map(l => ({ fn: l.fn, vol: l.volume, muted: l.muted }));
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  const url = new URL(window.location.href.split('?')[0]);
+  url.searchParams.set('c', encoded);
+  return url.toString();
+}
+
+function loadFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const c = params.get('c');
+  if (!c) return;
+  try {
+    const data = JSON.parse(decodeURIComponent(escape(atob(c))));
+    data.forEach(d => {
+      addLayer(d.fn);
+      const l = layers[layers.length - 1];
+      l.volume = d.vol ?? 0.5;
+      l.muted = d.muted ?? false;
+    });
+    renderLayers();
+    showToast('Composition loaded!');
+  } catch {}
+}
+
+// ─────────────────────────────────────────────
+// CURSOR HOVER — note display
+// ─────────────────────────────────────────────
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+function freqToNote(freq) {
+  const midi = 12 * Math.log2(freq / 440) + 69;
+  const rounded = Math.round(midi);
+  const octave = Math.floor(rounded / 12) - 1;
+  const note = NOTE_NAMES[rounded % 12];
+  return `${note}${octave}`;
+}
+
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const px = e.clientX - rect.left;
+  const py = e.clientY - rect.top;
+
+  const xWorld = canvasToX(px);
+  const yWorld = canvasToY(py);
+  const freq = yWorldToFreq(yWorld);
+  const note = freq > 0 ? freqToNote(freq) : '—';
+
+  // Drag to pan
+  if (isDragging) {
+    const dx = e.clientX - dragStartX;
+    const xSpan = getXRange() * 2;
+    const worldDelta = -(dx / canvas.width) * xSpan;
+    const newPan = dragStartPan + worldDelta;
+    document.getElementById('panInput').value = Math.round(newPan * 10) / 10;
+    drawAll();
+    return; // skip cursor label while dragging
+  }
+
+  document.getElementById('statusCursor').textContent =
+    `x=${xWorld.toFixed(2)}  y=${freq.toFixed(0)}Hz  ${note}`;
+
+  // Show layer value at cursor x
+  if (layers.length > 0) {
+    const noteDisp = document.getElementById('noteDisplay');
+    const l = layers[0];
+    const fval = evalFn(l.fn, xWorld);
+    if (fval !== null && fval > 0) {
+      noteDisp.style.display = 'block';
+      noteDisp.textContent = `f(${xWorld.toFixed(2)}) = ${fval.toFixed(0)}Hz · ${freqToNote(Math.abs(fval))}`;
+    } else {
+      noteDisp.style.display = 'none';
+    }
+  }
+});
+canvas.addEventListener('mouseleave', () => {
+  document.getElementById('statusCursor').textContent = 'cursor: —';
+  document.getElementById('noteDisplay').style.display = 'none';
+});
+
+// ─────────────────────────────────────────────
+// GESTURE HINT — fade out after a few seconds
+// ─────────────────────────────────────────────
+const gestureHint = document.getElementById('gestureHint');
+let hintTimer = setTimeout(() => gestureHint.classList.add('fade-out'), 4000);
+
+// Re-show hint briefly when user hovers canvas for the first time (once)
+let hintShownOnce = false;
+canvas.addEventListener('mouseenter', () => {
+  if (hintShownOnce) return;
+  hintShownOnce = true;
+  gestureHint.classList.remove('fade-out');
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => gestureHint.classList.add('fade-out'), 3000);
+});
+
+// Hide immediately while playing
+document.getElementById('btnPlay').addEventListener('click', () => {
+  gestureHint.classList.add('fade-out');
+}, { capture: true });
+
+// ─────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ─────────────────────────────────────────────
+// MATH LIBRARY
+// ─────────────────────────────────────────────
+const MATH_LIBRARY = [
+  { cat: 'Trig',       name: 'Sine',          mathLabel: 'sin(x)',        fn: 'sin(x)*440+440',                    color: '#7fff6e', xRange: 10 },
+  { cat: 'Trig',       name: 'Cosine',         mathLabel: 'cos(x)',        fn: 'cos(x)*440+440',                    color: '#6eb8ff', xRange: 10 },
+  { cat: 'Trig',       name: 'Tangent',        mathLabel: 'tan(x)',        fn: 'tan(x)*200+440',                    color: '#ffcd6e', xRange: 3  },
+  { cat: 'Trig',       name: 'Cotangent',      mathLabel: 'cot(x)',        fn: '(1/tan(x))*200+440',                color: '#ff9f6e', xRange: 3  },
+  { cat: 'Trig',       name: 'Secant',         mathLabel: 'sec(x)',        fn: '(1/cos(x))*150+440',                color: '#c46eff', xRange: 3  },
+  { cat: 'Trig',       name: 'Cosecant',       mathLabel: 'csc(x)',        fn: '(1/sin(x))*150+440',                color: '#ff6e9c', xRange: 3  },
+  { cat: 'Trig',       name: 'sin²(x)',        mathLabel: 'sin²(x)',       fn: 'pow(sin(x),2)*600+100',             color: '#6effdb', xRange: 10 },
+  { cat: 'Trig',       name: 'Damped sine',    mathLabel: 'sin·e⁻ˣ',      fn: 'sin(x*4)*exp(-x*0.4)*600+440',     color: '#7fff6e', xRange: 12 },
+  { cat: 'Exp/Log',    name: 'eˣ',             mathLabel: 'eˣ',            fn: 'exp(x)*50+100',                     color: '#ffcd6e', xRange: 4  },
+  { cat: 'Exp/Log',    name: 'e⁻ˣ',            mathLabel: 'e⁻ˣ',           fn: 'exp(-x)*800+100',                   color: '#ff9f6e', xRange: 4  },
+  { cat: 'Exp/Log',    name: 'ln(x)',           mathLabel: 'ln(x)',         fn: 'log(abs(x)+1)*300+100',             color: '#6eb8ff', xRange: 8  },
+  { cat: 'Exp/Log',    name: 'log₂(x)',         mathLabel: 'log₂(x)',       fn: 'log(abs(x)+1)/log(2)*200+100',     color: '#c46eff', xRange: 8  },
+  { cat: 'Exp/Log',    name: 'Gaussian',        mathLabel: 'e^(-x²)',       fn: 'exp(-pow(x,2)/4)*800+100',         color: '#7fff6e', xRange: 6  },
+  { cat: 'Exp/Log',    name: 'sinh(x)',         mathLabel: 'sinh(x)',       fn: '(exp(x)-exp(-x))/2*80+440',        color: '#6effdb', xRange: 4  },
+  { cat: 'Exp/Log',    name: 'cosh(x)',         mathLabel: 'cosh(x)',       fn: '(exp(x)+exp(-x))/2*80+200',        color: '#ff6e9c', xRange: 4  },
+  { cat: 'Exp/Log',    name: 'tanh(x)',         mathLabel: 'tanh(x)',       fn: '(exp(x)-exp(-x))/(exp(x)+exp(-x))*400+440', color: '#ffcd6e', xRange: 5 },
+  { cat: 'Polynomials',name: 'Linear',          mathLabel: 'x',             fn: 'x*60+440',                          color: '#6eb8ff', xRange: 8  },
+  { cat: 'Polynomials',name: 'Parabola',        mathLabel: 'x²',            fn: 'pow(x,2)*20+100',                   color: '#ffcd6e', xRange: 8  },
+  { cat: 'Polynomials',name: 'Cubic',           mathLabel: 'x³',            fn: 'pow(x,3)*5+440',                    color: '#c46eff', xRange: 6  },
+  { cat: 'Polynomials',name: 'x⁴',              mathLabel: 'x⁴',            fn: 'pow(x,4)*2+100',                    color: '#ff9f6e', xRange: 6  },
+  { cat: 'Polynomials',name: '√|x|',            mathLabel: '√|x|',          fn: 'sqrt(abs(x))*200+100',              color: '#7fff6e', xRange: 8  },
+  { cat: 'Polynomials',name: '1/x',             mathLabel: '1/x',           fn: '1/(x+0.01)*100+440',                color: '#ff6e9c', xRange: 6  },
+  { cat: 'Polynomials',name: '|x|',             mathLabel: '|x|',           fn: 'abs(x)*80+100',                     color: '#6effdb', xRange: 8  },
+  { cat: 'Special',    name: 'Square wave',     mathLabel: 'sgn(sin x)',    fn: '(sin(x)>0?1:-1)*400+440',           color: '#7fff6e', xRange: 10 },
+  { cat: 'Special',    name: 'Sawtooth',        mathLabel: 'saw(x)',        fn: '((x%PI+PI)%PI/PI)*700+100',         color: '#ffcd6e', xRange: 10 },
+  { cat: 'Special',    name: 'Triangle',        mathLabel: 'tri(x)',        fn: 'abs(((x%PI)+PI)%PI-PI/2)*560+160', color: '#6eb8ff', xRange: 10 },
+  { cat: 'Special',    name: 'Staircase',       mathLabel: '⌊x⌋',           fn: 'floor(x)*80+220',                   color: '#c46eff', xRange: 8  },
+  { cat: 'Special',    name: 'Chirp',           mathLabel: 'sin(x²)',       fn: 'sin(pow(x,2))*400+440',             color: '#ff9f6e', xRange: 6  },
+  { cat: 'Special',    name: 'Lissajous',       mathLabel: 'sin·sin',       fn: 'sin(x*3)*sin(x*2)*400+440',        color: '#6effdb', xRange: 10 },
+  { cat: 'Special',    name: 'Soft noise',      mathLabel: 'sin·sin',       fn: 'sin(x*7)*sin(x*3)*300+440',        color: '#ff6e9c', xRange: 8  },
+  { cat: 'Special',    name: 'Butterfly',       mathLabel: 'sin·eᶜᵒˢ',     fn: 'sin(x)*exp(cos(x))*200+440',       color: '#7fff6e', xRange: 10 },
+];
+
+const LIB_CATS = ['All', ...new Set(MATH_LIBRARY.map(f => f.cat))];
+let activeLibCat = 'All';
+
+function evalLibFn(fn, x) {
+  try {
+    const f = new Function('x','sin','cos','tan','abs','log','sqrt','pow','PI','exp','floor','ceil','round','min','max',
+      `"use strict"; return (${fn});`);
+    const v = f(x,Math.sin,Math.cos,Math.tan,Math.abs,Math.log,Math.sqrt,Math.pow,Math.PI,
+      Math.exp,Math.floor,Math.ceil,Math.round,Math.min,Math.max);
+    return (typeof v === 'number' && isFinite(v)) ? v : null;
+  } catch { return null; }
+}
+
+function drawThumb(tc, item) {
+  const w = tc.width, h = tc.height;
+  const c2 = tc.getContext('2d');
+  c2.clearRect(0,0,w,h);
+  c2.fillStyle = '#0a0a0f'; c2.fillRect(0,0,w,h);
+
+  const xR = item.xRange, steps = w * 2;
+  const vals = [];
+  for (let i = 0; i <= steps; i++) {
+    const v = evalLibFn(item.fn, -xR + (i/steps)*xR*2);
+    if (v !== null) vals.push(v);
+  }
+  if (vals.length < 2) return;
+
+  let yMin = Math.min(...vals), yMax = Math.max(...vals);
+  const pad = (yMax - yMin) * 0.15 || 50;
+  yMin -= pad; yMax += pad;
+  const ySpan = yMax - yMin || 1;
+
+  // grid axes
+  c2.strokeStyle = '#1e1e30'; c2.lineWidth = 1;
+  const oy = h - ((0 - yMin) / ySpan) * h;
+  const ox = w / 2;
+  if (oy > 0 && oy < h) { c2.beginPath(); c2.moveTo(0,oy); c2.lineTo(w,oy); c2.stroke(); }
+  c2.beginPath(); c2.moveTo(ox,0); c2.lineTo(ox,h); c2.stroke();
+
+  // curve
+  c2.shadowColor = item.color; c2.shadowBlur = 5;
+  c2.strokeStyle = item.color; c2.lineWidth = 1.8;
+  c2.beginPath();
+  let started = false;
+  for (let i = 0; i <= steps; i++) {
+    const xw = -xR + (i/steps)*xR*2;
+    const v = evalLibFn(item.fn, xw);
+    if (v === null) { started = false; continue; }
+    const px = (i/steps)*w;
+    const py = h - ((v - yMin) / ySpan) * h;
+    if (py < -4 || py > h+4) { started = false; continue; }
+    if (!started) { c2.moveTo(px,py); started = true; } else c2.lineTo(px,py);
+  }
+  c2.stroke(); c2.shadowBlur = 0;
+
+  // function name overlay — bottom-left, semi-transparent bg
+  const label = item.mathLabel || item.name;
+  c2.font = 'bold 9px "Space Mono", monospace';
+  const tw = c2.measureText(label).width;
+  c2.fillStyle = 'rgba(10,10,20,0.72)';
+  c2.fillRect(4, h - 16, tw + 8, 13);
+  c2.fillStyle = item.color;
+  c2.globalAlpha = 0.9;
+  c2.fillText(label, 8, h - 6);
+  c2.globalAlpha = 1;
+}
+
+function renderLibrary() {
+  const catEl = document.getElementById('libCats');
+  catEl.innerHTML = '';
+  LIB_CATS.forEach(cat => {
+    const b = document.createElement('button');
+    b.className = 'lib-cat-btn' + (cat === activeLibCat ? ' active' : '');
+    b.textContent = cat;
+    b.addEventListener('click', () => { activeLibCat = cat; renderLibrary(); });
+    catEl.appendChild(b);
+  });
+
+  const grid = document.getElementById('libGrid');
+  grid.innerHTML = '';
+  const items = activeLibCat === 'All' ? MATH_LIBRARY : MATH_LIBRARY.filter(f => f.cat === activeLibCat);
+
+  items.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'lib-card';
+    card.title = item.name;
+    const tc = document.createElement('canvas');
+    tc.width = 128; tc.height = 60;
+    tc.style.width = '100%'; tc.style.height = '60px';
+    card.appendChild(tc);
+    const info = document.createElement('div');
+    info.className = 'lib-card-info';
+    info.innerHTML = `<div class="lib-card-name">${item.name}</div><div class="lib-card-fn">${item.fn}</div>`;
+    card.appendChild(info);
+    const addBtn = document.createElement('div');
+    addBtn.className = 'lib-card-add';
+    addBtn.textContent = '+';
+    card.appendChild(addBtn);
+    card.addEventListener('click', () => { addLayer(item.fn); showToast(`"${item.name}" added ✓`); });
+    grid.appendChild(card);
+    requestAnimationFrame(() => drawThumb(tc, item));
+  });
+}
+
+// Library collapse toggle
+const libraryPanel   = document.getElementById('libraryPanel');
+const libToggleHdr   = document.getElementById('libraryToggleHeader');
+let libCollapsed = false;
+libToggleHdr.addEventListener('click', () => {
+  libCollapsed = !libCollapsed;
+  libraryPanel.classList.toggle('collapsed', libCollapsed);
+});
+
+// Onboarding
+document.getElementById('btnOnboardingClose').addEventListener('click', () => {
+  document.getElementById('onboardingModal').style.display = 'none';
+});
+
+// ─────────────────────────────────────────────
+// EVENT BINDINGS
+// ─────────────────────────────────────────────
+document.getElementById('btnPlay').addEventListener('click', play);
+document.getElementById('btnStop').addEventListener('click', stop);
+document.getElementById('btnExport').addEventListener('click', exportWav);
+document.getElementById('btnAddLayer').addEventListener('click', () => addLayer());
+document.getElementById('durationInput').addEventListener('change', () => { stop(); drawAll(); });
+document.getElementById('xRangeSelect').addEventListener('change', () => { stop(); drawAll(); });
+document.getElementById('panInput').addEventListener('change', () => { stop(); drawAll(); });
+document.getElementById('btnResetView').addEventListener('click', () => {
+  document.getElementById('xRangeSelect').value = '16';
+  document.getElementById('panInput').value = '0';
+  stop(); drawAll();
+  showToast('View reset');
+});
+
+document.getElementById('btnShare').addEventListener('click', () => {
+  document.getElementById('shareUrl').textContent = getShareUrl();
+  document.getElementById('shareModal').classList.add('show');
+});
+document.getElementById('btnCloseModal').addEventListener('click', () => {
+  document.getElementById('shareModal').classList.remove('show');
+});
+document.getElementById('btnCopyUrl').addEventListener('click', () => {
+  navigator.clipboard.writeText(document.getElementById('shareUrl').textContent)
+    .then(() => showToast('Link copied!'))
+    .catch(() => showToast('Copy the link manually'));
+});
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => addLayer(btn.dataset.fn));
+});
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+resizeCanvas();
+loadFromUrl();
+
+if (layers.length === 0) {
+  addLayer('sin(x)*440+440');
+  addLayer('x*80+220');
+}
+renderLayers();
+drawAll();
+renderLibrary();
+</script>
+</body>
+</html>
