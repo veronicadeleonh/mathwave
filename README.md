@@ -5,6 +5,7 @@
 MathWave is a browser-based audio playground where mathematical functions become melodies. Write `f(x)` — the curve you draw _is_ the sound. Stack multiple functions as layers, explore the Cartesian plane, and export your composition as a WAV file.
 
 ![MathWave — f(x) → 🎵](<https://img.shields.io/badge/MathWave-f(x)%20→%20🎵-7fff6e?style=flat-square&labelColor=0a0a0f>)
+![100% vibecoded](https://img.shields.io/badge/100%25-vibecoded-c46eff?style=flat-square&labelColor=0a0a0f)
 
 ![MathWave screenshot](assets/screenshot.png)
 
