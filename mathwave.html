@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MathWave — Música con Funciones</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0a0f'/><path d='M4 16 Q8 8 12 16 Q16 24 20 16 Q24 8 28 16' stroke='%237fff6e' stroke-width='2.5' fill='none' stroke-linecap='round'/></svg>">
 <style>
   :root {
     --bg: #0a0a0f;
@@ -248,25 +249,6 @@
     padding: 10px;
     border-top: 1px solid var(--border);
   }
-
-  .presets {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    margin-bottom: 8px;
-  }
-  .preset-btn {
-    font-family: 'Space Mono', monospace;
-    font-size: 10px;
-    padding: 4px 8px;
-    border-radius: 3px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--muted);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .preset-btn:hover { border-color: var(--accent); color: var(--accent); }
 
   /* GESTURE HINT */
   .gesture-hint {
@@ -617,16 +599,6 @@
     </div>
     <div class="layers" id="layersList"></div>
     <div class="add-layer-section">
-      <div class="presets" id="presets">
-        <button class="preset-btn" data-fn="sin(x)*440+440">wave</button>
-        <button class="preset-btn" data-fn="x*100+220">rise ↑</button>
-        <button class="preset-btn" data-fn="880-x*80">fall ↓</button>
-        <button class="preset-btn" data-fn="Math.abs(sin(x*2))*800+100">pulse</button>
-        <button class="preset-btn" data-fn="(Math.floor(x*4)/4)*220+220">steps</button>
-        <button class="preset-btn" data-fn="Math.pow(x,2)*30+220">parabola</button>
-        <button class="preset-btn" data-fn="sin(x*3)*300+440">vibrato</button>
-        <button class="preset-btn" data-fn="sin(x)*440+sin(x*3)*150+440">harmony</button>
-      </div>
       <button class="btn primary" id="btnAddLayer" style="width:100%">+ New layer</button>
     </div>
   </div>
@@ -1004,8 +976,6 @@ function drawLayer(layer) {
   ctx.globalAlpha = layer.muted ? 0.12 : 0.9;
   ctx.strokeStyle = layer.color;
   ctx.lineWidth = 2;
-  ctx.shadowColor = layer.color;
-  ctx.shadowBlur = 10;
   ctx.beginPath();
 
   let started = false;
@@ -1388,7 +1358,6 @@ function drawThumb(tc, item) {
   c2.beginPath(); c2.moveTo(ox,0); c2.lineTo(ox,h); c2.stroke();
 
   // curve
-  c2.shadowColor = item.color; c2.shadowBlur = 5;
   c2.strokeStyle = item.color; c2.lineWidth = 1.8;
   c2.beginPath();
   let started = false;
@@ -1401,7 +1370,7 @@ function drawThumb(tc, item) {
     if (py < -4 || py > h+4) { started = false; continue; }
     if (!started) { c2.moveTo(px,py); started = true; } else c2.lineTo(px,py);
   }
-  c2.stroke(); c2.shadowBlur = 0;
+  c2.stroke();
 
   // function name overlay — bottom-left, semi-transparent bg
   const label = item.mathLabel || item.name;
@@ -1440,7 +1409,7 @@ function renderLibrary() {
     card.appendChild(tc);
     const info = document.createElement('div');
     info.className = 'lib-card-info';
-    info.innerHTML = `<div class="lib-card-name">${item.name}</div><div class="lib-card-fn">${item.fn}</div>`;
+    info.innerHTML = `<div class="lib-card-name">${item.name}</div><div class="lib-card-fn">${item.mathLabel}</div>`;
     card.appendChild(info);
     const addBtn = document.createElement('div');
     addBtn.className = 'lib-card-add';
@@ -1494,10 +1463,6 @@ document.getElementById('btnCopyUrl').addEventListener('click', () => {
   navigator.clipboard.writeText(document.getElementById('shareUrl').textContent)
     .then(() => showToast('Link copied!'))
     .catch(() => showToast('Copy the link manually'));
-});
-
-document.querySelectorAll('.preset-btn').forEach(btn => {
-  btn.addEventListener('click', () => addLayer(btn.dataset.fn));
 });
 
 // ─────────────────────────────────────────────
