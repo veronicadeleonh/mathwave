@@ -6,6 +6,8 @@ MathWave is a browser-based audio playground where mathematical functions become
 
 ![MathWave — f(x) → 🎵](<https://img.shields.io/badge/MathWave-f(x)%20→%20🎵-7fff6e?style=flat-square&labelColor=0a0a0f>)
 
+![MathWave screenshot](assets/screenshot.png)
+
 ---
 
 ## How it works
@@ -27,7 +29,8 @@ Stack multiple functions as independent layers to build up harmonic complexity.
 
 - **Live Cartesian plane** — 4-quadrant grid with labeled axes, frequency reference lines (A2–A6), and a real-time playhead
 - **Layer system** — add, edit, mute, and volume-control multiple functions simultaneously
-- **Math Library** — 31 curated functions across 4 categories with live curve previews
+- **Math Library** — 31 curated functions across 4 categories with scrollable live curve previews
+- **Clean math notation** — library cards display the pure mathematical form (`sin(x)`, `x²`, etc.) rather than the frequency-scaled implementation
 - **Configurable x-range** — zoom from ±4 to ±256 to explore more of the function's domain
 - **Pan** — drag the canvas or use the pan input to explore any region of the function
 - **WAV export** — renders the full composition to a downloadable audio file
@@ -69,17 +72,11 @@ cd mathwave
 Functions are standard JavaScript expressions with `x` as the variable. All `Math.*` methods are available without the `Math.` prefix:
 
 ```js
-sin(x) * 440 + 440; // sine wave centered on A4
-cos(x * 2) * 300 + 440; // faster cosine
-exp(-x) * 600 + 100; // exponential decay
-pow(x, 2) * 15 +
-  100(
-    // parabola
-    sin(x) > 0 ? 1 : -1,
-  ) *
-    400 +
-  440; // square wave
-sin(pow(x, 2)) * 400 + 440; // chirp — accelerating frequency
+sin(x) * 440 + 440       // sine wave centered on A4
+cos(x * 2) * 300 + 440   // faster cosine
+exp(-x) * 600 + 100      // exponential decay
+(sin(x) > 0 ? 1 : -1) * 400 + 440  // square wave
+sin(pow(x, 2)) * 400 + 440          // chirp — accelerating frequency
 ```
 
 **The output value is treated as frequency in Hz.** Keep values roughly between `20` and `2000` for audible results. Values outside this range are silently skipped.

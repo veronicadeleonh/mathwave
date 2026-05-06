@@ -347,6 +347,7 @@
 
   .library-grid {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     padding: 10px 12px;
     display: grid;
@@ -370,7 +371,7 @@
   }
   .lib-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(127,255,110,0.12); }
   .lib-card:hover .lib-card-add { opacity: 1; }
-  .lib-card canvas { display: block; width: 100%; height: 56px; }
+  .lib-card canvas { display: block; width: 100%; height: 60px; flex-shrink: 0; }
   .lib-card-info { padding: 5px 7px 6px; border-top: 1px solid var(--border); }
   .lib-card-name { font-size: 11px; font-weight: 700; color: var(--text); margin-bottom: 1px; }
   .lib-card-fn {
@@ -1399,13 +1400,13 @@ function renderLibrary() {
   grid.innerHTML = '';
   const items = activeLibCat === 'All' ? MATH_LIBRARY : MATH_LIBRARY.filter(f => f.cat === activeLibCat);
 
+  const drawQueue = [];
   items.forEach(item => {
     const card = document.createElement('div');
     card.className = 'lib-card';
     card.title = item.name;
     const tc = document.createElement('canvas');
-    tc.width = 128; tc.height = 60;
-    tc.style.width = '100%'; tc.style.height = '60px';
+    tc.height = 60;
     card.appendChild(tc);
     const info = document.createElement('div');
     info.className = 'lib-card-info';
@@ -1417,7 +1418,14 @@ function renderLibrary() {
     card.appendChild(addBtn);
     card.addEventListener('click', () => { addLayer(item.fn); showToast(`"${item.name}" added ✓`); });
     grid.appendChild(card);
-    requestAnimationFrame(() => drawThumb(tc, item));
+    drawQueue.push({ tc, item });
+  });
+
+  requestAnimationFrame(() => {
+    drawQueue.forEach(({ tc, item }) => {
+      tc.width = tc.offsetWidth || 128;
+      drawThumb(tc, item);
+    });
   });
 }
 
